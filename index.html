@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Pong Game with Enhanced Visuals</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        #score, #instructions, #lightToggle {
+            position: absolute;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        #score {
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+        }
+        #instructions {
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+        }
+        #lightToggle {
+            top: 10px;
+            right: 10px;
+            font-size: 14px;
+            background-color: rgba(0,0,0,0.5);
+            padding: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">0 - 0</div>
+    <div id="instructions">
+        Player 1: WASD to move<br>
+        Player 2: Arrow keys to move<br>
+        IJKL: Rotate camera
+    </div>
+    <div id="lightToggle">Toggle Dual Lights</div>
+    <script type="module">
+        import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js';
+
+        // Game variables
+        let scene, camera, renderer, paddle1, paddle2, ball, score1, score2;
+        let paddleSpeed = 0.1;
+        let ballSpeed = 0.05;
+        let ballDirection = new THREE.Vector3(1, 0, 0);
+
+        // Camera variables
+        let cameraRadius = 12;
+        let cameraPhi = Math.PI / 3;
+        let cameraTheta = 0;
+        const cameraSpeed = 0.02;
+
+        // Lighting variables
+        let directionalLight1, directionalLight2;
+        let dualLightsEnabled = false;
+
+        // Initialize the game
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            updateCameraPosition();
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Create lighting
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+
+            directionalLight1 = createDirectionalLight(5, 10, 7.5);
+            scene.add(directionalLight1);
+
+            directionalLight2 = createDirectionalLight(-5, 10, -7.5);
+            directionalLight2.visible = false;
+            scene.add(directionalLight2);
+
+            // Create paddles
+            const paddleGeometry = new THREE.BoxGeometry(0.2, 1, 1);
+            const paddleMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
+            paddle1 = new THREE.Mesh(paddleGeometry, paddleMaterial);
+            paddle2 = new THREE.Mesh(paddleGeometry, paddleMaterial);
+            paddle1.position.set(-4.5, 1, 0);
+            paddle2.position.set(4.5, 1, 0);
+            paddle1.castShadow = true;
+            paddle2.castShadow = true;
+            scene.add(paddle1);
+            scene.add(paddle2);
+
+            // Create ball
+            const ballGeometry = new THREE.SphereGeometry(0.1, 32, 32);
+            const ballMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
+            ball = new THREE.Mesh(ballGeometry, ballMaterial);
+            ball.castShadow = true;
+            resetBall();
+            scene.add(ball);
+
+            // Create playing field
+            const fieldGeometry = new THREE.BoxGeometry(10, 0.1, 10);
+            const fieldMaterial = new THREE.MeshPhongMaterial({ color: 0x1a472a });
+            const field = new THREE.Mesh(fieldGeometry, fieldMaterial);
+            field.position.y = -0.05;
+            field.receiveShadow = true;
+            scene.add(field);
+
+            // Create roof
+            const roofGeometry = new THREE.BoxGeometry(10, 0.1, 10);
+            const roofMaterial = new THREE.MeshPhongMaterial({ color: 0x1a472a, transparent: true, opacity: 0.3 });
+            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.y = 5.05;
+            roof.receiveShadow = true;
+            scene.add(roof);
+
+            // Initialize scores
+            score1 = 0;
+            score2 = 0;
+            updateScoreDisplay();
+
+            // Add event listeners
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            window.addEventListener('resize', onWindowResize);
+            document.getElementById('lightToggle').addEventListener('click', toggleDualLights);
+        }
+
+        function createDirectionalLight(x, y, z) {
+            const light = new THREE.DirectionalLight(0xffffff, 0.5);
+            light.position.set(x, y, z);
+            light.castShadow = true;
+            light.shadow.mapSize.width = 2048;
+            light.shadow.mapSize.height = 2048;
+            light.shadow.camera.near = 1;
+            light.shadow.camera.far = 20;
+            light.shadow.camera.left = -10;
+            light.shadow.camera.right = 10;
+            light.shadow.camera.top = 10;
+            light.shadow.camera.bottom = -10;
+            return light;
+        }
+
+        function toggleDualLights() {
+            dualLightsEnabled = !dualLightsEnabled;
+            directionalLight2.visible = dualLightsEnabled;
+        }
+
+        // Key states and handlers (unchanged)
+        const keyStates = {};
+        function onKeyDown(event) { keyStates[event.code] = true; }
+        function onKeyUp(event) { keyStates[event.code] = false; }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function updateCameraPosition() {
+            camera.position.x = cameraRadius * Math.sin(cameraPhi) * Math.cos(cameraTheta);
+            camera.position.y = cameraRadius * Math.cos(cameraPhi);
+            camera.position.z = cameraRadius * Math.sin(cameraPhi) * Math.sin(cameraTheta);
+            camera.lookAt(0, 0, 0);
+        }
+
+        function update() {
+            // Move paddles (unchanged)
+            if (keyStates['KeyW']) paddle1.position.y = Math.min(paddle1.position.y + paddleSpeed, 4.5);
+            if (keyStates['KeyS']) paddle1.position.y = Math.max(paddle1.position.y - paddleSpeed, 0.5);
+            if (keyStates['KeyA']) paddle1.position.z = Math.max(paddle1.position.z - paddleSpeed, -4.5);
+            if (keyStates['KeyD']) paddle1.position.z = Math.min(paddle1.position.z + paddleSpeed, 4.5);
+
+            if (keyStates['ArrowUp']) paddle2.position.y = Math.min(paddle2.position.y + paddleSpeed, 4.5);
+            if (keyStates['ArrowDown']) paddle2.position.y = Math.max(paddle2.position.y - paddleSpeed, 0.5);
+            if (keyStates['ArrowLeft']) paddle2.position.z = Math.max(paddle2.position.z - paddleSpeed, -4.5);
+            if (keyStates['ArrowRight']) paddle2.position.z = Math.min(paddle2.position.z + paddleSpeed, 4.5);
+
+            // Rotate camera (unchanged)
+            if (keyStates['KeyI']) cameraPhi = Math.max(cameraPhi - cameraSpeed, 0.1);
+            if (keyStates['KeyK']) cameraPhi = Math.min(cameraPhi + cameraSpeed, Math.PI - 0.1);
+            if (keyStates['KeyJ']) cameraTheta -= cameraSpeed;
+            if (keyStates['KeyL']) cameraTheta += cameraSpeed;
+            updateCameraPosition();
+
+            // Move ball
+            ball.position.add(ballDirection.clone().multiplyScalar(ballSpeed));
+
+            // Check for collisions (paddle logic unchanged)
+            if (ball.position.x <= paddle1.position.x + 0.2 &&
+                ball.position.x >= paddle1.position.x &&
+                ball.position.y >= paddle1.position.y - 0.5 &&
+                ball.position.y <= paddle1.position.y + 0.5 &&
+                ball.position.z >= paddle1.position.z - 0.5 &&
+                ball.position.z <= paddle1.position.z + 0.5) {
+                ballDirection.x = Math.abs(ballDirection.x);
+                ballDirection.y += (ball.position.y - paddle1.position.y) * 0.5;
+                ballDirection.z += (ball.position.z - paddle1.position.z) * 0.5;
+                ballDirection.normalize();
+            }
+            if (ball.position.x >= paddle2.position.x - 0.2 &&
+                ball.position.x <= paddle2.position.x &&
+                ball.position.y >= paddle2.position.y - 0.5 &&
+                ball.position.y <= paddle2.position.y + 0.5 &&
+                ball.position.z >= paddle2.position.z - 0.5 &&
+                ball.position.z <= paddle2.position.z + 0.5) {
+                ballDirection.x = -Math.abs(ballDirection.x);
+                ballDirection.y += (ball.position.y - paddle2.position.y) * 0.5;
+                ballDirection.z += (ball.position.z - paddle2.position.z) * 0.5;
+                ballDirection.normalize();
+            }
+
+            // Check for collisions with walls
+            if (ball.position.y > 4.9 || ball.position.y < 0.1) ballDirection.y = -ballDirection.y;
+            if (ball.position.z > 4.9 || ball.position.z < -4.9) ballDirection.z = -ballDirection.z;
+
+            // Check for scoring (extended reset distance)
+            if (ball.position.x < -7) {
+                score2++;
+                resetBall();
+            } else if (ball.position.x > 7) {
+                score1++;
+                resetBall();
+            }
+
+            updateScoreDisplay();
+        }
+
+        function resetBall() {
+            ball.position.set(0, 2.5, 0);
+            ballDirection = new THREE.Vector3(Math.random() > 0.5 ? 1 : -1, 0, 0).normalize();
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('score').innerHTML = `${score1} - ${score2}`;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            update();
+            renderer.render(scene, camera);
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>
