@@ -177,13 +177,13 @@
             // Move paddles (unchanged)
             if (keyStates['KeyW']) paddle1.position.y = Math.min(paddle1.position.y + paddleSpeed, 4.5);
             if (keyStates['KeyS']) paddle1.position.y = Math.max(paddle1.position.y - paddleSpeed, 0.5);
-            if (keyStates['KeyA']) paddle1.position.z = Math.max(paddle1.position.z - paddleSpeed, -4.5);
-            if (keyStates['KeyD']) paddle1.position.z = Math.min(paddle1.position.z + paddleSpeed, 4.5);
+            if (keyStates['KeyD']) paddle1.position.z = Math.max(paddle1.position.z - paddleSpeed, -4.5);
+            if (keyStates['KeyA']) paddle1.position.z = Math.min(paddle1.position.z + paddleSpeed, 4.5);
 
             if (keyStates['ArrowUp']) paddle2.position.y = Math.min(paddle2.position.y + paddleSpeed, 4.5);
             if (keyStates['ArrowDown']) paddle2.position.y = Math.max(paddle2.position.y - paddleSpeed, 0.5);
-            if (keyStates['ArrowLeft']) paddle2.position.z = Math.max(paddle2.position.z - paddleSpeed, -4.5);
-            if (keyStates['ArrowRight']) paddle2.position.z = Math.min(paddle2.position.z + paddleSpeed, 4.5);
+            if (keyStates['ArrowRight']) paddle2.position.z = Math.max(paddle2.position.z - paddleSpeed, -4.5);
+            if (keyStates['ArrowLeft']) paddle2.position.z = Math.min(paddle2.position.z + paddleSpeed, 4.5);
 
             // Rotate camera (unchanged)
             if (keyStates['KeyI']) cameraPhi = Math.max(cameraPhi - cameraSpeed, 0.1);
