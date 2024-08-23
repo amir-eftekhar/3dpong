@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Snake Game - Customizable</title>
+    <title>3D Snake Game - Customizable with Pause and Reset</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
-        #score, #instructions, #controls {
+        #score, #instructions, #controls, #gameControls {
             position: absolute;
             color: white;
             background-color: rgba(0,0,0,0.5);
@@ -30,12 +30,45 @@
             left: 10px;
             font-size: 14px;
         }
+        #gameControls {
+            top: 10px;
+            right: 10px;
+            font-size: 14px;
+        }
         .slider-container {
             margin-bottom: 10px;
         }
         input[type="range"] {
             width: 100%;
         }
+        button {
+            margin-right: 5px;
+            cursor: pointer;
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: none;
+            
+            background-color: #3498db;
+            color: white;
+           
+            font-size: 16px;
+            transition: all 0.3s ease;
+            outline: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+          }
+          button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+          }
+          button:active {
+            transform: translateY(1px);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+          }
+          button:focus {
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.5);
+          }
+          
     </style>
 </head>
 <body>
@@ -56,6 +89,10 @@
             <input type="range" id="sizeSlider" min="5" max="25" value="15">
         </div>
     </div>
+    <div id="gameControls">
+        <button id="pauseButton">Pause</button>
+        <button id="resetButton">Reset</button>
+    </div>
     <script type="module">
         import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js';
 
@@ -68,6 +105,7 @@
         let newDirection = new THREE.Vector3(1, 0, 0);
         let gameInterval;
         let speed = 3;
+        let isPaused = false;
 
         // Camera variables
         let cameraRadius = 30;
@@ -118,6 +156,10 @@
             // Set up sliders
             document.getElementById('speedSlider').addEventListener('input', updateSpeed);
             document.getElementById('sizeSlider').addEventListener('input', updateSize);
+
+            // Set up game control buttons
+            document.getElementById('pauseButton').addEventListener('click', togglePause);
+            document.getElementById('resetButton').addEventListener('click', resetGame);
 
             startGame();
         }
@@ -204,6 +246,8 @@
         }
 
         function updateSnake() {
+            if (isPaused) return;
+
             if (newDirection.dot(direction) === 0) {
                 direction.copy(newDirection);
             }
@@ -237,13 +281,8 @@
         function gameOver() {
             clearInterval(gameInterval);
             alert('Game Over! Score: ' + score);
-            snake = [new THREE.Vector3(0, 0, 0)];
-            score = 0;
-            document.getElementById('score').textContent = 'Score: 0';
-            direction.set(1, 0, 0);
-            newDirection.set(1, 0, 0);
-            placeFood();
-            startGame();
+            isPaused = true;
+            document.getElementById('pauseButton').textContent = 'Resume';
         }
 
         function startGame() {
@@ -251,10 +290,33 @@
             gameInterval = setInterval(updateSnake, 1000 / speed);
         }
 
+        function togglePause() {
+            isPaused = !isPaused;
+            document.getElementById('pauseButton').textContent = isPaused ? 'Resume' : 'Pause';
+            if (!isPaused) {
+                startGame();
+            }
+        }
+
+        function resetGame() {
+            clearInterval(gameInterval);
+            snake = [new THREE.Vector3(0, 0, 0)];
+            score = 0;
+            document.getElementById('score').textContent = 'Score: 0';
+            direction.set(1, 0, 0);
+            newDirection.set(1, 0, 0);
+            placeFood();
+            isPaused = false;
+            document.getElementById('pauseButton').textContent = 'Pause';
+            startGame();
+        }
+
         function updateSpeed() {
             speed = parseInt(this.value);
             document.getElementById('speedValue').textContent = speed;
-            startGame();
+            if (!isPaused) {
+                startGame();
+            }
         }
 
         function updateSize() {
