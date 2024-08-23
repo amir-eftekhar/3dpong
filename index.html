@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Pong Game with Enhanced Visuals</title>
+    <title>3D Pong Game with Enhanced Visuals and Continuous Play</title>
     <style>
         body { margin: 0; overflow: hidden; }
         #score, #instructions, #lightToggle {
@@ -62,6 +62,9 @@
         let directionalLight1, directionalLight2;
         let dualLightsEnabled = false;
 
+        // New variables for wall boundaries
+        const wallDistance = 6; // Distance of walls from center
+
         // Initialize the game
         function init() {
             scene = new THREE.Scene();
@@ -108,7 +111,7 @@
             scene.add(ball);
 
             // Create playing field
-            const fieldGeometry = new THREE.BoxGeometry(10, 0.1, 10);
+            const fieldGeometry = new THREE.BoxGeometry(wallDistance * 2, 0.1, 10);
             const fieldMaterial = new THREE.MeshPhongMaterial({ color: 0x1a472a });
             const field = new THREE.Mesh(fieldGeometry, fieldMaterial);
             field.position.y = -0.05;
@@ -116,12 +119,22 @@
             scene.add(field);
 
             // Create roof
-            const roofGeometry = new THREE.BoxGeometry(10, 0.1, 10);
+            const roofGeometry = new THREE.BoxGeometry(wallDistance * 2, 0.1, 10);
             const roofMaterial = new THREE.MeshPhongMaterial({ color: 0x1a472a, transparent: true, opacity: 0.3 });
             const roof = new THREE.Mesh(roofGeometry, roofMaterial);
             roof.position.y = 5.05;
             roof.receiveShadow = true;
             scene.add(roof);
+
+            // Create side walls
+            const sideWallGeometry = new THREE.BoxGeometry(0.1, 5, 10);
+            const sideWallMaterial = new THREE.MeshPhongMaterial({ color: 0x1a472a, transparent: true, opacity: 0.3 });
+            const leftWall = new THREE.Mesh(sideWallGeometry, sideWallMaterial);
+            const rightWall = new THREE.Mesh(sideWallGeometry, sideWallMaterial);
+            leftWall.position.set(-wallDistance, 2.5, 0);
+            rightWall.position.set(wallDistance, 2.5, 0);
+            scene.add(leftWall);
+            scene.add(rightWall);
 
             // Initialize scores
             score1 = 0;
@@ -219,20 +232,20 @@
                 ballDirection.normalize();
             }
 
-            // Check for collisions with walls
-            if (ball.position.y > 4.9 || ball.position.y < 0.1) ballDirection.y = -ballDirection.y;
-            if (ball.position.z > 4.9 || ball.position.z < -4.9) ballDirection.z = -ballDirection.z;
-
-            // Check for scoring (extended reset distance)
-            if (ball.position.x < -7) {
+            // Check for collisions with walls and scoring
+            if (ball.position.x < -wallDistance) {
+                ballDirection.x = Math.abs(ballDirection.x);
                 score2++;
-                resetBall();
-            } else if (ball.position.x > 7) {
+                updateScoreDisplay();
+            } else if (ball.position.x > wallDistance) {
+                ballDirection.x = -Math.abs(ballDirection.x);
                 score1++;
-                resetBall();
+                updateScoreDisplay();
             }
 
-            updateScoreDisplay();
+            // Check for collisions with top/bottom and front/back walls
+            if (ball.position.y > 4.9 || ball.position.y < 0.1) ballDirection.y = -ballDirection.y;
+            if (ball.position.z > 4.9 || ball.position.z < -4.9) ballDirection.z = -ballDirection.z;
         }
 
         function resetBall() {
